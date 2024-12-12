@@ -14,6 +14,25 @@ def load_password(path_to_config):
     
     return os.getenv("PASSWORD")
 
+def look_for_books(session, name):
+
+    query = session.query(
+        Book.title, Shop.name, Sale.price, Sale.date_sale
+        ).select_from(Book).\
+            join(Stock, Stock.id_book == Book.id).\
+            join(Sale, Sale.id_stock == Stock.id).\
+            join(Shop, Shop.id == Stock.id_shop).\
+            join(Publisher, Publisher.id == Book.id_publisher)
+
+    if name.isdigit():
+        result = query.filter(Publisher.id == int(name)).all()
+    else:
+        result = query.filter(Publisher.name.like(f"%{name}%")).all()
+
+    for b_name, s_name, price, date in result:
+        print(f"{b_name: <40} | {s_name: <15} | {price: < 8} | {date.strftime('%d-%m-%Y')}")
+
+
 def main():
     path_to_config = "config.env"               # путь до файла с паролем
     path_to_json = "tests_data.json"            # путь до json файла для 3 задания
@@ -119,40 +138,9 @@ def main():
     session.commit()
 
     name = None
-    while name != '0':
-        name = input("Введите автора (или 0 для остановки): ")
-
-        query = session.query(
-            Book.title, 
-            Shop.name, 
-            Sale.price, 
-            Sale.date_sale).join(
-                Stock, Stock.id_book == Book.id).join(
-                Sale, Sale.id_stock == Stock.id).join(
-                Shop, Shop.id == Stock.id_shop).join(
-                Publisher, Publisher.id == Book.id_publisher).filter(
-                    Publisher.name.like(f"%{name}%")
-                    ).all()
-        
-        if len(query):
-            format_len_title, format_len_name, format_len_price, format_len_date = 0, 0, 0, 0
-            for q_title, q_name, q_price, q_date in query:
-                format_len_title = max(len(q_title), format_len_title)
-                format_len_name = max(len(q_name), format_len_name)
-                format_len_price = max(len(str(q_price)), format_len_price)
-                format_len_date = max(len(str(q_date)), format_len_date)
-                
-            for q_title, q_name, q_price, q_date in query:
-                print(str(q_title).ljust(format_len_title),
-                    str(q_name).ljust(format_len_name),
-                    str(q_price).ljust(format_len_price),
-                    str(q_date).ljust(format_len_date),
-                    sep=' | ')
-        else:
-            if name == '0': 
-                print("Выход из режима поиска")
-                continue
-            print("У такого писателя никто книгу не покупал")
+    while name != '-1':
+        name = input("Введите имя автора или его id (или -1 для остановки): ")
+        look_for_books(session, name)
 
     session.close()
 
